@@ -236,4 +236,69 @@
     )
 )
 
+;; Generate comprehensive wealth growth report and recommendations
+;; This function analyzes portfolio performance, calculates risk-adjusted returns,
+;; and provides personalized investment advice based on market conditions
+(define-public (generate-wealth-growth-report (user principal))
+    (let
+        (
+            (portfolio (unwrap! (map-get? portfolios user) err-not-found))
+            (strategy (unwrap! (map-get? investment-strategies (get strategy-id portfolio)) err-not-found))
+            (current-value (get current-value portfolio))
+            (initial-investment (get total-invested portfolio))
+            (growth-rate (calculate-growth-rate initial-investment current-value))
+            (target-return (to-int (get target-return strategy)))
+            (performance-gap (- growth-rate target-return))
+            (blocks-held (- block-height (get last-updated portfolio)))
+            (risk-level (get risk-level portfolio))
+        )
+        
+        ;; Store growth history
+        (map-set growth-history
+            {user: user, period: block-height}
+            {
+                value: current-value,
+                growth-rate: growth-rate,
+                timestamp: block-height
+            }
+        )
+        
+        ;; Calculate risk-adjusted metrics
+        (let
+            (
+                (sharpe-ratio (if (> risk-level u1)
+                    (/ growth-rate (to-int (* risk-level u100)))
+                    growth-rate))
+                (recommendation
+                    (if (< performance-gap -500) ;; Underperforming by >5%
+                        "REBALANCE-INCREASE-RISK"
+                        (if (> performance-gap 1000) ;; Overperforming by >10%
+                            "SECURE-PROFITS"
+                            "MAINTAIN-STRATEGY"
+                        )
+                    ))
+            )
+            
+            ;; Return comprehensive report
+            (ok {
+                user: user,
+                current-value: current-value,
+                total-invested: initial-investment,
+                absolute-gain: (if (> current-value initial-investment)
+                    (- current-value initial-investment)
+                    u0),
+                growth-rate-bps: growth-rate,
+                target-return-bps: target-return,
+                performance-vs-target: performance-gap,
+                risk-level: risk-level,
+                sharpe-ratio: sharpe-ratio,
+                blocks-held: blocks-held,
+                strategy-name: (get name strategy),
+                recommendation: recommendation,
+                fees-paid-total: (get advisory-fees-paid portfolio),
+                portfolio-active: (get active portfolio)
+            })
+        )
+    )
+)
 
